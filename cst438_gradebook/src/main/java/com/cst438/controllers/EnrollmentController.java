@@ -33,8 +33,29 @@ public class EnrollmentController {
 		
 		//TODO  complete this method in homework 4
 		
-		return null;
+		Enrollment e = new Enrollment();
+		e.setStudentEmail(enrollmentDTO.studentEmail);
+		e.setStudentName(enrollmentDTO.studentName);
 		
+		//we have to relate it to a course
+		Course c = courseRepository.findById(enrollmentDTO.course_id).orElse(null);
+		//then, we check the value of course object c, and throw an error if it doesn't exist
+		if(c == null) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Course id not found.");
+		}
+		
+		//putting course value into enrollment object
+		e.setCourse(c);
+		e = enrollmentRepository.save(e);
+		
+		//grabbing the id to store into the DTO
+		enrollmentDTO.id = e.getId();
+		
+		return enrollmentDTO;
+		
+//		this.studentEmail=studentEmail;
+//		this.studentName=studentName;
+//		this.course_id = course_id;		
 	}
 
 }
