@@ -18,73 +18,44 @@ import com.cst438.domain.EnrollmentRepository;
 
 
 public class RegistrationServiceMQ extends RegistrationService {
-
+	 
 	@Autowired
 	EnrollmentRepository enrollmentRepository;
-
+ 
 	@Autowired
 	CourseRepository courseRepository;
-
+ 
 	@Autowired
 	private RabbitTemplate rabbitTemplate;
-
+ 
+	@Autowired
+	Queue registrationQueue;
+ 
 	public RegistrationServiceMQ() {
 		System.out.println("MQ registration service ");
 	}
-
-	// ----- configuration of message queues
-
-	@Autowired
-	Queue registrationQueue;
-
-
-	// ----- end of configuration of message queue
-
+ 
 	// receiver of messages from Registration service
-	
 	@RabbitListener(queues = "gradebook-queue")
-	@Transactional
 	public void receive(EnrollmentDTO enrollmentDTO) {
-		
-		//TODO  complete this method in homework 4
-		Enrollment e = new Enrollment();
-		e.setStudentEmail(enrollmentDTO.studentEmail);
-		e.setStudentName(enrollmentDTO.studentName);
-		
-		//we have to relate it to a course
-				Course c = courseRepository.findById(enrollmentDTO.course_id).orElse(null);
-				//then, we check the value of course object c, and throw an error if it doesn't exist
-				if(c == null) {
-					throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Course id not found.");
-				}
-				
-				//putting course value into enrollment object
-				e.setCourse(c);
-		
-		e = enrollmentRepository.save(e);
-		
-		
-		//sending attempt as message
-		System.out.println("Sending rabbitmq message: " + e);
-		rabbitTemplate.convertAndSend(registrationQueue.getName(), e);
-		System.out.println("Message sent.");
+		System.out.println("Receive enrollment :" + enrollmentDTO);
+		Course c = courseRepository.findById(enrollmentDTO.course_id).orElse(null);
+		if (c != null) {
+			Enrollment e = new Enrollment();
+			e.setCourse(c);
+			e.setStudentEmail(enrollmentDTO.studentEmail);
+			e.setStudentName(enrollmentDTO.studentName);
+			enrollmentRepository.save(e);
+			System.out.println("Success");
+		} else {
+			System.out.println("Fail");
+		}
 	}
-
+ 
 	// sender of messages to Registration Service
 	@Override
 	public void sendFinalGrades(int course_id, CourseDTOG courseDTO) {
-		 
-		//TODO  complete this method in homework 4
-		//printing out a message for the console
-		System.out.println("Sending final grades" + course_id + " " + courseDTO);
-		
-		//put call to registration URL. appending parameters to end of localhost url
-		//restTemplate.put(registration_url + "/course/" + course_id, courseDTO);
-		rabbitTemplate.convertAndSend(registrationQueue.getName(), courseDTO);
-		
-		//another console message for debugging
-		System.out.println("Message send to gradbook service for student " + course_id + " " + courseDTO);
-		
+		System.out.println("Sending final grades rabbitmq: " + course_id);
+		rabbitTemplate.convertAndSend(registrationQueue.getName(), courseDTO);		
 	}
-
 }
